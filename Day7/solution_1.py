@@ -1,29 +1,12 @@
-from collections import Counter
+def eval(line):
+    hand, bid = line.split()
+    hand = hand.translate(str.maketrans('TJQKA', face))
+    best = max(type(hand.replace('0', r)) for r in hand)
+    return best, hand, int(bid)
 
-file = open("input.txt", "r")
+def type(hand):
+    return sorted(map(hand.count, hand), reverse=True)
 
-hand=[]
-bid=[]
-
-map = {}
-
-
-def häufigstes_zeichen(s):
-    c = Counter(s)
-    
-    häufigstes = c.most_common(1)
-    
-    return häufigstes[0] 
-
-for zeile in file:
-    temp = häufigstes_zeichen(zeile.split()[0])
-    temp2 = (zeile.split()[0],zeile.split()[1])
-    map[temp2] = temp
-
-länge = len(map)
-for i in range(länge-1):
-    for j in range(länge-1):
-        if(map[])
-
-
-
+for face in 'ABCDE', 'A0CDE':
+    print(sum(rank * bid for rank, (*_, bid) in
+        enumerate(sorted(map(eval, open('input.txt'))), start=1)))
