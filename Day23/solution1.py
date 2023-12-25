@@ -1,74 +1,70 @@
-from benchy import minibench
 import sys
-
 sys.setrecursionlimit(10000)
-tiles = open("input.txt").read().split("\n")
-dimx = len(tiles[0])
-dimy = len(tiles)
-(sx, sy) = (tiles[0].find("."), 0)
-(fx, fy) = (tiles[dimy - 1].find("."), dimy - 1)
 
-dirs = ((-1, 0, "<"), (1, 0, ">"), (0, -1, "^"), (0, 1, "v"))
+carte = []
+with open('input.txt','r') as f:
+    for ligne in f.read().splitlines():
+        carte.append(ligne)
 
-def dfs1(x, y, path, plen):
-    dirs = ((-1, 0, "<"), (1, 0, ">"), (0, -1, "^"), (0, 1, "v"))
-    if (x, y) == (fx, fy):
-        return plen
-    path[y * dimx + x] = 1
-    best = 0
-    for dx, dy, dc in dirs:
-        (nx, ny) = (x + dx, y + dy)
-        if (tiles[ny][nx] == "." or tiles[ny][nx] == dc) and not path[ny * dimx + nx]:
-            best = max(best, dfs1(nx, ny, path, plen + 1))
-    path[y * dimx + x] = 0
-    return best
+n, m = len(carte), len(carte[0])
 
-def part1():
-    p = [0] * (dimx * dimy)
-    p[sx] = 1
-    return dfs1(sx, sy + 1, p, 1)
+def voisins( pos ):
+    i, j = pos
+    if carte[i][j] == '>': return [(i,j+1)]
+    if carte[i][j] == '<': return [(i, j-1)]
+    if carte[i][j] == '^': return [(i-1,j)]
+    if carte[i][j] == 'v': return [(i+1, j)]
 
-def dfs2(x, y, visited, prev, last, steps, branches, graph):
-    visited.add((x, y))
-    cnt = 0
-    for dx, dy, _ in dirs:
-        (nx, ny) = (x + dx, y + dy)
-        if tiles[ny][nx] != "#" and (nx, ny) != prev:
-            cnt += 1
-    if cnt > 1:
-        cur = branches[(x, y)] = len(branches)
-        graph.append([])
-        graph[cur].append((last, steps))
-        graph[last].append((cur, steps))
-        last = cur
-        steps = 0
-    for dx, dy, _ in dirs:
-        (nx, ny) = (x + dx, y + dy)
-        if (nx, ny) != prev and (nx, ny) in branches:
-            cur = branches[(nx, ny)]
-            graph[cur].append((last, steps + 1))
-            graph[last].append((cur, steps + 1))
-        elif tiles[ny][nx] != "#" and (nx, ny) not in visited:
-            dfs2(nx, ny, visited, (x, y), last, steps + 1, branches, graph)
+    voisinspot = [(i-1,j), (i+1,j), (i,j-1), (i,j+1) ]
+    if carte[i][j] == '.':
+        return [(i,j) for (i,j) in voisinspot if i >= 0 and j >= 0 and i < n and j < m and carte[i][j] != '#']
 
-def dfs3(cur, path, steps, graph):
-    if cur == 1:
-        return steps
-    path[cur] = 1
-    best = 0
-    for dst, add in graph[cur]:
-        if not path[dst]:
-            best = max(best, dfs3(dst, path, steps + add, graph))
-    path[cur] = 0
-    return best
+def DFS(start, end, init_dist, vus):
+    if start == end:
+        yield init_dist
 
-def part2():
-    branches = {(sx, sy): 0, (fx, fy): 1}
-    graph = [[], []]
-    dfs2(sx, sy + 1, set(), (sx, sy), 0, 1, branches, graph)
-    return dfs3(0, [0] * len(graph), 0, graph)
+    for v in voisins(start):
+        if v not in vus:
+            vus.add(v)
+            yield from DFS(v, end, init_dist + 1, vus)
+            vus.remove(v)
 
-print(part1())
-print(part2())
+deb = (0,1)
+fin = (n-1, m-2)
 
-minibench({"part1": part1, "part2": part2})
+print('Part 1 :',max(DFS(deb,fin,0,{deb})))
+
+## Part 2
+from time import time
+def voisins2( pos ):
+    i, j = pos
+    voisinspot = [(i-1,j), (i+1,j), (i,j-1), (i,j+1) ]
+    return [(i,j) for (i,j) in voisinspot if i >= 0 and j >= 0 and i < n and j < m and carte[i][j] != '#']
+
+
+# Contracted graph
+bifurcations = [deb] + [(i,j) for i in range(n) for j in range(m) if len(voisins2((i,j))) > 2  ] + [fin]
+#G = {bif: [ ] for bif in bifurcations}
+from collections import defaultdict
+G = defaultdict(list)
+for b in bifurcations:
+    for v in voisins2(b):
+        previous, cur = b, v
+        d = 1
+        while cur not in bifurcations:
+            previous, cur = cur, [p for p in voisins2(cur) if p != previous][0]
+            d += 1
+        G[b].append((cur, d))
+
+
+def DFS2(start, end, init_dist, vus):
+    if start == end:
+        yield init_dist
+
+    for v, d in G[start]:
+        if v not in vus:
+            vus.add(v)
+            yield from DFS2(v, end, init_dist + d, vus)
+            vus.remove(v)
+
+print('Part 2 :',max(DFS2(deb,fin,0,{deb})))
